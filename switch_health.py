@@ -2,6 +2,7 @@
 
 from rich.console import Console
 from rich.table import Table
+from rich.progress import Progress
 from pycentral.base import ArubaCentralBase
 
 # Creating dependencies for API calls, from Aruba team docs
@@ -30,31 +31,39 @@ device_table.add_column("Switch Type", justify="center", style="orange3")
 device_table.add_column("Status", justify="center")
 device_table.add_column("Model", justify="center", style="dodger_blue2")
 
-# For loop for each switch in serials list
-for serial in switches:
-    apiPath = f"/monitoring/v1/switches/{serial}"
-    apiMethod = "GET"
-    apiParams = {"serial": f"{serial}"}
-    # Saving each device response to device_resp variable
-    # If statements are just checking a key and then adding rows to table
-    device_resp = central.command(
-        apiMethod=apiMethod, apiPath=apiPath, apiParams=apiParams
+# Creating Progress for progress bar
+with Progress() as progress:
+    task1 = progress.add_task(
+        "[green]Processing Switch Information...", total=len(switches)
     )
-    if "status" in device_resp["msg"].keys():
-        if device_resp["msg"]["status"] != "Up":
-            device_table.add_row(
-                f"{device_resp['msg']['switch_type']}",
-                f":thumbs_down: [red]{device_resp['msg']['status']}[/] :thumbs_down:",
-                f"{device_resp['msg']['model']}",
-                style="green",
-            )
-        elif device_resp["msg"]["status"] == "Up":
-            device_table.add_row(
-                device_resp["msg"]["switch_type"],
-                device_resp["msg"]["status"],
-                device_resp["msg"]["model"],
-                style="green",
-            )
+
+    # For loop for each switch in serials list
+    for serial in switches:
+        apiPath = f"/monitoring/v1/switches/{serial}"
+        apiMethod = "GET"
+        apiParams = {"serial": f"{serial}"}
+        # Saving each device response to device_resp variable
+        # If statements are just checking a key and then adding rows to table
+        device_resp = central.command(
+            apiMethod=apiMethod, apiPath=apiPath, apiParams=apiParams
+        )
+        if "status" in device_resp["msg"].keys():
+            if device_resp["msg"]["status"] != "Up":
+                device_table.add_row(
+                    f"{device_resp['msg']['switch_type']}",
+                    f":thumbs_down: [red]{device_resp['msg']['status']}[/] :thumbs_down:",
+                    f"{device_resp['msg']['model']}",
+                    style="green",
+                )
+            elif device_resp["msg"]["status"] == "Up":
+                device_table.add_row(
+                    device_resp["msg"]["switch_type"],
+                    device_resp["msg"]["status"],
+                    device_resp["msg"]["model"],
+                    style="green",
+                )
+
+        progress.update(task1, advance=1.0)
 
 console = Console()
 console.print(device_table)
